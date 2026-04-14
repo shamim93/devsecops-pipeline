@@ -65,7 +65,7 @@ python manage.py runserver
 Visit http://localhost:8000
 
 ## Project Status
-🚧 **In Development** - Week 3: Building Django Application
+🚧 **In Development** - Building Django Application
 
 ## Author
 Shamim Hossen - Master's Student in Cyber Security
