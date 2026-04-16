@@ -1,13 +1,13 @@
-from django.shortcuts import render
-from rest_framework import viewsets,status
-from rest_framework.decorators import api_view,permission_classes
-from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from django.contrib.auth import authenticate,login,logout
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from .models import Task
-from .serializers import TaskSerializer, UserRegistrationSerializer,UserSerializer
+from .serializers import TaskSerializer, UserSerializer, UserRegistrationSerializer
 
-#User Registration
+# User Registration
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -18,59 +18,49 @@ def register_user(request):
             'message': 'User created successfully',
             'user': UserSerializer(user).data
         }, status=status.HTTP_201_CREATED)
-    
-    return Response(serializer.errors,status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-#Login user
-
+# User Login
 @api_view(['POST'])
 @permission_classes([AllowAny])
-
 def login_user(request):
     username = request.data.get('username')
     password = request.data.get('password')
-    user =  authenticate(username=username, password=password)
     
+    user = authenticate(username=username, password=password)
     if user:
-        login(request,user)
-        return Response(
-            {
-                'message': 'Loging successfull',
-                'user' : UserSerializer(user).data
-            }
-        )
-    return Response(
-        {
-            'error': 'Invalid credentials'
+        login(request, user)
+        return Response({
+            'message': 'Login successful',
+            'user': UserSerializer(user).data
+        })
+    return Response({
+        'error': 'Invalid credentials'
+    }, status=status.HTTP_401_UNAUTHORIZED)
 
-        }, status=status.HTTP_401_UNAUTHORIZED
-    )
-
-# user logout
+# User Logout
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_user(request):
     logout(request)
-    return Response(
-        {
-            'message': 'Logout Successfully'
+    return Response({'message': 'Logout successful'})
 
-        }
-    )
-# get current user
+# Get Current User
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-
 def current_user(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
 
-# tasks viewset
+# Task ViewSet (CRUD operations)
 class TaskViewSet(viewsets.ModelViewSet):
-    serializer_class =  TaskSerializer
+    serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
-
+    
     def get_queryset(self):
+        # Users can only see their own tasks
         return Task.objects.filter(created_by=self.request.user)
+    
     def perform_create(self, serializer):
+        # Automatically set created_by to current user
         serializer.save(created_by=self.request.user)
-
