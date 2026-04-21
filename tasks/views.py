@@ -64,3 +64,20 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Automatically set created_by to current user
         serializer.save(created_by=self.request.user)
+
+# VULNERABILITY: Missing Authentication
+# This endpoint should require authentication but doesn't!
+@api_view(['GET'])
+@permission_classes([AllowAny])  # VULNERABLE: No authentication required!
+def get_all_tasks_insecure(request):
+    """
+    INTENTIONALLY VULNERABLE: Missing Authentication
+    Any user can see ALL tasks from ALL users!
+    """
+    tasks = Task.objects.all()  # DANGEROUS: Exposing all users' data!
+    serializer = TaskSerializer(tasks, many=True)
+    return Response({
+        'warning': 'This endpoint is intentionally insecure',
+        'vulnerability': 'Missing authentication - exposing all user data',
+        'tasks': serializer.data
+    })
