@@ -12,7 +12,8 @@ urlpatterns = [
     path('auth/login/', views.login_user, name='api-login'),
     path('auth/logout/', views.logout_user, name='api-logout'),
     path('auth/me/', views.current_user, name='api-current-user'),
-    
+    # VULNERABLE ENDPOINT: No authentication required
+    path('insecure/all-tasks/', views.get_all_tasks_insecure, name='insecure-all-tasks'),
     # Task endpoints (CRUD)
     path('', include(router.urls)),
 ]
