@@ -8,6 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from .models import Task
 from .forms import TaskForm
+from django.db import connection
 
 # Registration View
 def register_view(request):
@@ -66,3 +67,39 @@ class TaskDeleteView(LoginRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(request, 'Task deleted successfully!')
         return super().delete(request, *args, **kwargs)
+    
+# VULNERABLE: SQL Injection
+# WARNING: This is intentionally vulnerable for testing purposes!
+@login_required
+def search_tasks_vulnerable(request):
+    """
+    INTENTIONALLY VULNERABLE TO SQL INJECTION
+    For security testing purposes only
+    """
+    query = request.GET.get('q', '')
+    
+    if query:
+        # VULNERABLE: Direct string formatting in SQL query
+        # This allows SQL injection attacks!
+        sql = f"SELECT * FROM tasks_task WHERE (title LIKE '%{query}%' OR description LIKE '%{query}%') AND created_by_id = {request.user.id}"
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(sql)  # DANGEROUS!
+                columns = [col[0] for col in cursor.description]
+                results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            # Show error to demonstrate vulnerability
+            results = []
+            return render(request, 'tasks/search_results.html', {
+                'results': results,
+                'query': query,
+                'error': f'SQL Error (vulnerability exposed): {str(e)}'
+            })
+    else:
+        results = []
+    
+    return render(request, 'tasks/search_results.html', {
+        'results': results,
+        'query': query
+    })
