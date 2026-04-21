@@ -11,4 +11,5 @@ urlpatterns = [
     path('task/new/', web_views.TaskCreateView.as_view(), name='task-create'),
     path('task/<int:pk>/edit/', web_views.TaskUpdateView.as_view(), name='task-update'),
     path('task/<int:pk>/delete/', web_views.TaskDeleteView.as_view(), name='task-delete'),
+    path('search/', web_views.search_tasks_vulnerable, name='search-tasks'),
 ]
