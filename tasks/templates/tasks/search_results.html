@@ -1,0 +1,49 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Search Tasks{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <h2>Search Tasks</h2>
+        
+        <!-- Search Form -->
+        <form method="get" class="mb-4">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" 
+                       placeholder="Search tasks..." value="{{ query }}">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+            <small class="text-muted">Try searching for task titles or descriptions</small>
+        </form>
+
+        <!-- Show SQL Error (demonstrates vulnerability) -->
+        {% if error %}
+            <div class="alert alert-danger">
+                <strong>⚠️ Security Vulnerability Exposed!</strong><br>
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <!-- VULNERABLE: XSS - Unescaped output -->
+        {% if query %}
+            <p>Search results for: {{ query|safe }}</p>
+        {% endif %}
+
+        <!-- Results -->
+        {% if results %}
+            <div class="list-group">
+                {% for task in results %}
+                    <div class="list-group-item">
+                        <h5>{{ task.title }}</h5>
+                        <p>{{ task.description }}</p>
+                        <small class="text-muted">Status: {{ task.status }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        {% elif query and not error %}
+            <div class="alert alert-info">No tasks found.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
