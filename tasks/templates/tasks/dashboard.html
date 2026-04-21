@@ -1,0 +1,43 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Dashboard - SecureTask{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>My Tasks</h2>
+    <a href="{% url 'task-create' %}" class="btn btn-success">+ New Task</a>
+</div>
+
+{% if tasks %}
+    <div class="row">
+        {% for task in tasks %}
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ task.title }}</h5>
+                    <p class="card-text">{{ task.description|truncatewords:20 }}</p>
+                    <span class="badge 
+                        {% if task.status == 'completed' %}bg-success
+                        {% elif task.status == 'in_progress' %}bg-warning
+                        {% else %}bg-secondary{% endif %}">
+                        {{ task.get_status_display }}
+                    </span>
+                    <p class="text-muted small mt-2">
+                        Created: {{ task.created_at|date:"M d, Y" }}
+                    </p>
+                </div>
+                <div class="card-footer bg-white">
+                    <a href="{% url 'task-update' task.id %}" class="btn btn-sm btn-primary">Edit</a>
+                    <a href="{% url 'task-delete' task.id %}" class="btn btn-sm btn-danger">Delete</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <h4>No tasks yet!</h4>
+        <p>Click the "New Task" button to create your first task.</p>
+    </div>
+{% endif %}
+{% endblock %}
