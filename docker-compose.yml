@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:13
+    container_name: securetask-db
+    environment:
+      POSTGRES_DB: securetask_db
+      POSTGRES_USER: securetask_user
+      POSTGRES_PASSWORD: securetask_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - securetask-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U securetask_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Web Application
+  web:
+    build: .
+    container_name: securetask-web
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgresql://securetask_user:securetask_password@db:5432/securetask_db
+      - DB_HOST=db
+      - DB_NAME=securetask_db
+      - DB_USER=securetask_user
+      - DB_PASSWORD=securetask_password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - securetask-network
+
+volumes:
+  postgres_data:
+
+networks:
+  securetask-network:
+    driver: bridge
