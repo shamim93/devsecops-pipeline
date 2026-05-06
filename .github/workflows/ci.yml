@@ -187,7 +187,21 @@ jobs:
       with:
         name: trivy-container-report
         path: trivy-report.json
-
+# Job 5.5: DAST Scan (runs separately due to needing running app)
+  dast-trigger:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Trigger DAST Workflow
+      run: |
+        echo "DAST scanning is performed in separate workflow"
+        echo "See: .github/workflows/dast-scan.yml"
+        echo "DAST scans the RUNNING application for:"
+        echo "  - XSS vulnerabilities"
+        echo "  - CSRF issues"
+        echo "  - Authentication problems"
+        echo "  - Session management flaws"
   # Job 6: Security Gate Summary
   security-gate-check:
     runs-on: ubuntu-latest
