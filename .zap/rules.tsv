@@ -1,0 +1,16 @@
+# ZAP Scanning Rules Configuration
+# Format: ID	THRESHOLD	[INSTANCE]
+# IDs: https://www.zaproxy.org/docs/alerts/
+
+# Ignore rules for intentional vulnerabilities (for demo)
+10023	IGNORE	# Application Error Disclosure
+10096	IGNORE	# Timestamp Disclosure
+10109	IGNORE	# Modern Web Application
+40012	IGNORE	# Cross Site Scripting (Reflected)
+40014	IGNORE	# Cross Site Scripting (Persistent)
+90033	IGNORE	# Loosely Scoped Cookie
+
+# Alert on high-risk issues
+40018	FAIL	# SQL Injection
+10055	FAIL	# CSP Header Not Set
+10202	FAIL	# Absence of Anti-CSRF Tokens
