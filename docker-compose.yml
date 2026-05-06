@@ -32,7 +32,8 @@ services:
       - DB_HOST=db
       - DB_NAME=securetask_db
       - DB_USER=securetask_user
-      - DB_PASSWORD=securetask_password
+      - DB_PASSWORD=securetask_password - DB_PASSWORD=securetask_password
+      - DJANGO_SUPERUSER_PASSWORD=sha9893mim
     depends_on:
       db:
         condition: service_healthy
