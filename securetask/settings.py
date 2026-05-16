@@ -29,7 +29,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'tasks',
-    'security_intelligence'
+    'security_intelligence',
     'crispy_forms',
     'crispy_bootstrap4',
 ]
