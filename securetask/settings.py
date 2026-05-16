@@ -64,10 +64,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'securetask.wsgi.application'
-
+BASE_DIR = Path(__file__).resolve().parent.parent
 # Database
-USE_SQLITE = config('USE_SQLITE', default='False', cast=str) == 'True'
-
+USE_SQLITE = os.environ.get('USE_SQLITE', 'False').lower() in ('true', '1', 'yes')
 if USE_SQLITE:
     DATABASES = {
         'default': {
@@ -79,11 +78,11 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='securetask_db'),
-            'USER': config('DB_USER', default='securetask_user'),
-            'PASSWORD': config('DB_PASSWORD', default='securetask_password'),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5432'),
+            'NAME': os.environ.get('DB_NAME', 'securetask_db'),
+            'USER': os.environ.get('DB_USER', 'securetask_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'securetask_password'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
         }
     }
 
