@@ -43,40 +43,57 @@ class Command(BaseCommand):
                 continue
             
             try:
+                # Try to read as JSON first
                 with open(filepath, 'r') as f:
-                    report_data = json.load(f)
-                
+                    content = f.read().strip()
+                if not content:
+                    self.stdout.write(self.style.WARNING(f"Empty report for {tool_name}, skipping"))
+                    continue
+                try:
+                    report_data = json.loads(content)
+                except json.JSONDecodeError:
+                    # Not valid JSON, treat as text
+                    self.stdout.write(self.style.WARNING(f"{tool_name} report is not JSON, parsing as text"))
+                    report_data = {'raw_output': content}
+
                 # Create scan record
                 scan = SecurityScan.objects.create(
-                    scan_type=scan_type,
-                    tool_name=tool_name,
-                    commit_sha=commit_sha,
-                    raw_report=report_data
-                )
-                
+                        scan_type=scan_type,
+                        tool_name=tool_name,
+                        commit_sha=commit_sha,
+                        raw_report=report_data if isinstance(report_data, dict) else {}
+                    )
+                            
                 # Parse vulnerabilities
                 vulns = UnifiedParser.parse_report(tool_name, report_data)
                 vulnerabilities_by_tool[tool_name] = vulns
-                
+                        
                 # Save to database
                 for vuln_data in vulns:
-                    Vulnerability.objects.create(
-                        scan=scan,
-                        vulnerability_id=vuln_data.get('vulnerability_id', ''),
-                        title=vuln_data.get('title', ''),
-                        description=vuln_data.get('description', ''),
-                        severity=vuln_data.get('severity', 'medium'),
-                        confidence=vuln_data.get('confidence', 'medium'),
-                        file_path=vuln_data.get('file_path', ''),
-                        line_number=vuln_data.get('line_number', 0),
-                        code_snippet=vuln_data.get('code_snippet', ''),
-                        cwe_id=vuln_data.get('cwe_id', ''),
-                        cvss_score=vuln_data.get('cvss_score'),
-                        references=vuln_data.get('references', []),
-                    )
-                
-                self.stdout.write(self.style.SUCCESS(f"✅ Imported {len(vulns)} from {tool_name}"))
-                
+                    try:
+                        
+                        Vulnerability.objects.create(
+                            scan=scan,
+                            vulnerability_id=vuln_data.get('vulnerability_id', ''),
+                            title=vuln_data.get('title', '')[:255],
+                            description=vuln_data.get('description', ''),
+                            severity=vuln_data.get('severity', 'medium'),
+                            confidence=vuln_data.get('confidence', 'medium'),
+                            file_path=vuln_data.get('file_path', '')[:500],
+                            line_number=vuln_data.get('line_number') or 0,
+                            code_snippet=vuln_data.get('code_snippet', ''),
+                            cwe_id=str(vuln_data.get('cwe_id', ''))[:20],
+                            cvss_score=vuln_data.get('cvss_score'),
+                            references=vuln_data.get('references', []),
+                        )
+                        
+                    except Exception as e:
+                        self.stdout.write(self.style.WARNING(f"Error saving vulnerability: {e}"))
+                        continue
+                self.stdout.write(self.style.SUCCESS(
+                f"✅ Imported {len(vulns)} vulnerabilities from {tool_name}"
+            ))
+                    
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"Error importing {tool_name}: {e}"))
         

@@ -1,0 +1,14 @@
+{
+  "results": [
+    {
+      "test_id": "B608",
+      "issue_text": "Possible SQL injection",
+      "issue_severity": "MEDIUM",
+      "issue_confidence": "LOW",
+      "filename": "tasks/web_views.py",
+      "line_number": 84,
+      "code": "sql = f\"SELECT * FROM tasks_task WHERE title LIKE '%{query}%'\"",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b608_hardcoded_sql_expressions.html"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+    "vulnerabilities": [
+        {
+            "vulnerability_id": "90553",
+            "package_name": "requests",
+            "analyzed_version": "2.32.5",
+            "advisory": "Insecure Temporary File reuse due to predictable temporary filename",
+            "severity": "medium",
+            "cvss": 5.5,
+            "more_info_url": "https://getsafety.com/v/90553"
+        },
+        {
+            "vulnerability_id": "83159",
+            "package_name": "marshmallow",
+            "analyzed_version": "4.0.1",
+            "advisory": "Denial of Service (DoS) due to inefficient merging",
+            "severity": "medium",
+            "cvss": 5.3,
+            "more_info_url": "https://getsafety.com/v/83159"
+        },
+        {
+            "vulnerability_id": "89827",
+            "package_name": "nltk",
+            "analyzed_version": "3.9.2",
+            "advisory": "Arbitrary File Overwrite due to improper validation",
+            "severity": "high",
+            "cvss": 7.5,
+            "more_info_url": "https://getsafety.com/v/89827"
+        },
+        {
+            "vulnerability_id": "89824",
+            "package_name": "nltk",
+            "analyzed_version": "3.9.2",
+            "advisory": "Cross-site Scripting (XSS) due to improper output encoding",
+            "severity": "medium",
+            "cvss": 6.1,
+            "more_info_url": "https://getsafety.com/v/89824"
+        },
+        {
+            "vulnerability_id": "84183",
+            "package_name": "filelock",
+            "analyzed_version": "3.19.1",
+            "advisory": "Time-of-Check Time-of-Use (TOCTOU) Race Condition",
+            "severity": "medium",
+            "cvss": 5.9,
+            "more_info_url": "https://getsafety.com/v/84183"
+        }
+    ]
+}

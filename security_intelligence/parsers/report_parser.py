@@ -42,30 +42,187 @@ class BanditParser:
 
 
 class SafetyParser:
-    """Parse Safety SCA reports"""
+    """Parse Safety SCA reports - handles multiple output formats"""
     
     @staticmethod
-    def parse(report_data: Dict) -> List[Dict]:
-        """Parse Safety JSON report"""
+    def parse(report_data) -> List[Dict]:
+        """
+        Parse Safety JSON report
+        Handles multiple Safety versions and formats
+        """
         vulnerabilities = []
         
-        vulns = report_data.get('vulnerabilities', [])
+        # Handle string input
+        if isinstance(report_data, str):
+            try:
+                report_data = json.loads(report_data)
+            except json.JSONDecodeError:
+                return SafetyParser._parse_text_output(report_data)
         
-        for item in vulns:
+        if not isinstance(report_data, dict):
+            return vulnerabilities
+        
+        # Handle raw text output wrapped in JSON
+        if 'raw_output' in report_data:
+            return SafetyParser._parse_text_output(report_data['raw_output'])
+        
+        # Format 1: New Safety scan format
+        # {"scan_results": {"dependencies": [...]}}
+        if 'scan_results' in report_data:
+            return SafetyParser._parse_new_format(report_data)
+        
+        # Format 2: Old Safety check format
+        # {"vulnerabilities": [...]}
+        if 'vulnerabilities' in report_data:
+            return SafetyParser._parse_old_format(report_data)
+        
+        # Format 3: Array format
+        # [{"vulnerability_id": ...}]
+        if isinstance(report_data, list):
+            return SafetyParser._parse_array_format(report_data)
+        
+        return vulnerabilities
+    
+    @staticmethod
+    def _parse_new_format(report_data: Dict) -> List[Dict]:
+        """Parse new Safety scan format"""
+        vulnerabilities = []
+        
+        scan_results = report_data.get('scan_results', {})
+        dependencies = scan_results.get('dependencies', [])
+        
+        for dep in dependencies:
+            dep_vulns = dep.get('vulnerabilities', {})
+            found = dep_vulns.get('found', [])
+            
+            for item in found:
+                vuln = {
+                    'tool_name': 'Safety',
+                    'scan_type': 'sca',
+                    'vulnerability_id': item.get('vulnerability_id', ''),
+                    'title': f"Vulnerable dependency: {dep.get('name', '')}",
+                    'description': item.get('advisory', ''),
+                    'severity': item.get('severity', 'medium').lower(),
+                    'confidence': 'high',
+                    'file_path': 'requirements.txt',
+                    'line_number': 0,
+                    'code_snippet': f"{dep.get('name', '')}=={dep.get('version', '')}",
+                    'cwe_id': '',
+                    'cvss_score': item.get('cvss_v3_severity', {}).get('base_score', 0),
+                    'references': [item.get('more_info_url', '')],
+                }
+                vulnerabilities.append(vuln)
+        
+        return vulnerabilities
+    
+    @staticmethod
+    def _parse_old_format(report_data: Dict) -> List[Dict]:
+        """Parse old Safety check format"""
+        vulnerabilities = []
+        
+        for item in report_data.get('vulnerabilities', []):
             vuln = {
                 'tool_name': 'Safety',
                 'scan_type': 'sca',
                 'vulnerability_id': item.get('vulnerability_id', ''),
-                'title': f"Vulnerable dependency: {item.get('package_name', '')}",
+                'title': f"Vulnerable: {item.get('package_name', '')}",
                 'description': item.get('advisory', ''),
-                'severity': SafetyParser._map_severity(item.get('severity', 'medium')),
-                'confidence': 'high',  # Safety findings are typically high confidence
+                'severity': item.get('severity', 'medium').lower(),
+                'confidence': 'high',
                 'file_path': 'requirements.txt',
                 'line_number': 0,
                 'code_snippet': f"{item.get('package_name', '')}=={item.get('analyzed_version', '')}",
                 'cwe_id': '',
-                'cvss_score': item.get('cvss', 0),
-                'references': [item.get('more_info_url', '')] if item.get('more_info_url') else [],
+                'cvss_score': float(item.get('cvss', 0) or 0),
+                'references': [item.get('more_info_url', '')],
+            }
+            vulnerabilities.append(vuln)
+        
+        return vulnerabilities
+    
+    @staticmethod
+    def _parse_array_format(report_data: List) -> List[Dict]:
+        """Parse array format"""
+        vulnerabilities = []
+        
+        for item in report_data:
+            if not isinstance(item, dict):
+                continue
+            vuln = {
+                'tool_name': 'Safety',
+                'scan_type': 'sca',
+                'vulnerability_id': item.get('vulnerability_id', item.get('id', '')),
+                'title': f"Vulnerable: {item.get('package_name', item.get('package', ''))}",
+                'description': item.get('advisory', item.get('description', '')),
+                'severity': item.get('severity', 'medium').lower(),
+                'confidence': 'high',
+                'file_path': 'requirements.txt',
+                'line_number': 0,
+                'code_snippet': '',
+                'cwe_id': '',
+                'cvss_score': 0,
+                'references': [],
+            }
+            vulnerabilities.append(vuln)
+        
+        return vulnerabilities
+    
+    @staticmethod
+    def _parse_text_output(text: str) -> List[Dict]:
+        """
+        Parse Safety text output when JSON is not available
+        Extracts vulnerability info from formatted text
+        """
+        vulnerabilities = []
+        
+        if not text:
+            return vulnerabilities
+        
+        import re
+        
+        # Pattern: "Vulnerability found in PACKAGE version VERSION"
+        vuln_pattern = r'Vulnerability found in (\w[\w\-]*) version ([\d\.]+)'
+        advisory_pattern = r'ADVISORY: (.+?)(?=CVE|For more|$)'
+        cve_pattern = r'(CVE-\d{4}-\d+)'
+        id_pattern = r'Vulnerability ID: ([^\n]+)'
+        
+        # Split by vulnerability blocks
+        blocks = re.split(r'-{10,}', text)
+        
+        for block in blocks:
+            package_match = re.search(vuln_pattern, block)
+            if not package_match:
+                continue
+            
+            package_name = package_match.group(1)
+            package_version = package_match.group(2)
+            
+            # Extract vulnerability ID
+            id_match = re.search(id_pattern, block)
+            vuln_id = id_match.group(1).strip() if id_match else ''
+            
+            # Extract advisory
+            advisory_match = re.search(advisory_pattern, block, re.DOTALL)
+            advisory = advisory_match.group(1).strip() if advisory_match else ''
+            
+            # Extract CVE
+            cve_match = re.search(cve_pattern, block)
+            cve = cve_match.group(1) if cve_match else ''
+            
+            vuln = {
+                'tool_name': 'Safety',
+                'scan_type': 'sca',
+                'vulnerability_id': cve or vuln_id,
+                'title': f"Vulnerable dependency: {package_name}",
+                'description': advisory,
+                'severity': 'medium',
+                'confidence': 'high',
+                'file_path': 'requirements.txt',
+                'line_number': 0,
+                'code_snippet': f"{package_name}=={package_version}",
+                'cwe_id': '',
+                'cvss_score': 0,
+                'references': [f"https://pyup.io/{vuln_id}"] if vuln_id else [],
             }
             vulnerabilities.append(vuln)
         
