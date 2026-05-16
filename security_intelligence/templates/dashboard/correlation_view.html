@@ -1,0 +1,128 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Correlation Analysis{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>🔗 Cross-Tool Vulnerability Correlation</h2>
+        <p class="text-muted mb-0">
+            Novel analysis identifying duplicate findings across security tools
+        </p>
+    </div>
+    <a href="{% url 'security-dashboard' %}" class="btn btn-outline-secondary">
+        ← Back to Dashboard
+    </a>
+</div>
+
+<!-- Correlation Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h5 class="text-muted">Total Raw Findings</h5>
+                <h2 class="text-primary">{{ report.total_raw_findings }}</h2>
+                <small>From all security tools</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h5 class="text-muted">Unique Issues</h5>
+                <h2 class="text-success">{{ report.unique_issues }}</h2>
+                <small>After deduplication</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h5 class="text-muted">Alert Reduction</h5>
+                <h2 class="text-warning">{{ report.reduction_percentage }}%</h2>
+                <small>Less noise for developers</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <h5 class="text-muted">Multi-Tool Confirmed</h5>
+                <h2 class="text-danger">{{ report.multi_tool_confirmations }}</h2>
+                <small>High confidence findings</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Correlation Groups -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Correlated Vulnerability Groups</h5>
+        <small class="text-muted">
+            Vulnerabilities detected by multiple tools
+        </small>
+    </div>
+    <div class="card-body">
+        {% if correlations %}
+            {% for group in correlations %}
+            <div class="card border-warning mb-3">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <div class="d-flex justify-content-between">
+                        <strong>{{ group.primary.title|truncatechars:60 }}</strong>
+                        <span class="badge bg-warning text-dark">
+                            {{ group.tools|length }} tools detected
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Primary Finding:</h6>
+                            <p class="mb-1">
+                                <strong>Tool:</strong>
+                                {{ group.primary.tool_name }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Severity:</strong>
+                                {{ group.primary.severity|upper }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Location:</strong>
+                                {{ group.primary.file_path|default:"N/A" }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Also Detected By:</h6>
+                            {% for corr in group.correlated %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>{{ corr.vulnerability.tool_name }}</span>
+                                <span class="badge bg-info">
+                                    {{ corr.confidence|floatformat:2 }} confidence
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Tools: {{ group.tools|join:", " }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                No correlations found. This could mean:
+                <ul class="mb-0 mt-2">
+                    <li>Each tool found different unique issues</li>
+                    <li>Not enough scan data imported yet</li>
+                    <li>Tools detected different vulnerability types</li>
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

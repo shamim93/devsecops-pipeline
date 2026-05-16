@@ -1,0 +1,59 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Security Scans{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>🔍 Security Scans</h2>
+    <a href="{% url 'security-dashboard' %}" class="btn btn-outline-secondary">
+        ← Back to Dashboard
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Tool</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Branch</th>
+                    <th>Commit</th>
+                    <th>Findings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scan in scans %}
+                <tr>
+                    <td><strong>{{ scan.tool_name }}</strong></td>
+                    <td>
+                        <span class="badge bg-light text-dark">
+                            {{ scan.get_scan_type_display }}
+                        </span>
+                    </td>
+                    <td>{{ scan.scan_date|date:"M d, Y H:i" }}</td>
+                    <td>{{ scan.branch }}</td>
+                    <td>
+                        <small class="text-muted">
+                            {{ scan.commit_sha|truncatechars:8 }}
+                        </small>
+                    </td>
+                    <td>
+                        <span class="badge bg-primary">
+                            {{ scan.vulnerabilities.count }}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No scans found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

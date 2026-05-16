@@ -1,0 +1,503 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Security Intelligence Dashboard{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1>🛡️ Security Intelligence Dashboard</h1>
+            <p class="text-muted mb-0">
+                Multi-Tool Security Analysis & Risk Assessment
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'vuln-list' %}" class="btn btn-outline-primary me-2">
+                View All Vulnerabilities
+            </a>
+            <a href="{% url 'correlation-view' %}" class="btn btn-outline-info me-2">
+                Correlation Analysis
+            </a>
+            <a href="{% url 'scan-list' %}" class="btn btn-outline-secondary">
+                View Scans
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if health_score %}
+<!-- Security Health Score -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center h-100 border-0 shadow-sm">
+            <div class="card-body d-flex flex-column justify-content-center">
+                <h5 class="text-muted">Security Health Score</h5>
+                <div class="display-1 fw-bold
+                    {% if health_score.grade == 'A' %}text-success
+                    {% elif health_score.grade == 'B' %}text-info
+                    {% elif health_score.grade == 'C' %}text-warning
+                    {% else %}text-danger{% endif %}">
+                    {{ health_score.grade }}
+                </div>
+                <h3>{{ health_score.overall_score|floatformat:1 }}/100</h3>
+                {% if trend.trend == 'up' %}
+                    <span class="badge bg-success">↑ Improving</span>
+                {% elif trend.trend == 'down' %}
+                    <span class="badge bg-danger">↓ Declining</span>
+                {% else %}
+                    <span class="badge bg-secondary">→ Stable</span>
+                {% endif %}
+                <small class="text-muted mt-2">
+                    Updated: {{ health_score.calculated_at|date:"M d, Y H:i" }}
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Component Scores</h5>
+
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <small>Code Security (SAST) - 30%</small>
+                        <small><strong>
+                            {{ health_score.code_security_score|floatformat:1 }}
+                        </strong></small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-danger"
+                            style="width: {{ health_score.code_security_score }}%">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <small>Dependency Health (SCA) - 25%</small>
+                        <small><strong>
+                            {{ health_score.dependency_health_score|floatformat:1 }}
+                        </strong></small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-warning"
+                            style="width: {{ health_score.dependency_health_score }}%">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <small>Runtime Security (DAST) - 20%</small>
+                        <small><strong>
+                            {{ health_score.runtime_security_score|floatformat:1 }}
+                        </strong></small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-info"
+                            style="width: {{ health_score.runtime_security_score }}%">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <small>Secret Exposure - 15%</small>
+                        <small><strong>
+                            {{ health_score.secret_exposure_score|floatformat:1 }}
+                        </strong></small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-purple"
+                            style="width: {{ health_score.secret_exposure_score }}%;
+                            background-color: #6f42c1!important">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <small>Container Security - 10%</small>
+                        <small><strong>
+                            {{ health_score.container_security_score|floatformat:1 }}
+                        </strong></small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-success"
+                            style="width: {{ health_score.container_security_score }}%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Security Score Trend</h5>
+                <canvas id="trendChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vulnerability Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-danger border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-danger">Critical</h6>
+                <h2 class="text-danger fw-bold">{{ severity_counts.critical }}</h2>
+                <small class="text-muted">Immediate action required</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-warning">High</h6>
+                <h2 class="text-warning fw-bold">{{ severity_counts.high }}</h2>
+                <small class="text-muted">Fix within 48 hours</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-info">Medium</h6>
+                <h2 class="text-info fw-bold">{{ severity_counts.medium }}</h2>
+                <small class="text-muted">Fix within sprint</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-secondary">Low</h6>
+                <h2 class="text-secondary fw-bold">{{ severity_counts.low }}</h2>
+                <small class="text-muted">Schedule for next release</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Vulnerabilities by Severity</h5>
+                <canvas id="severityChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Findings by Tool</h5>
+                <canvas id="toolChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Tool Coverage</h5>
+                <div class="mt-3">
+                    {% for tool_type, covered in scan_coverage.items %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-capitalize">{{ tool_type }}</span>
+                        {% if covered %}
+                            <span class="badge bg-success">✅ Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">❌ Missing</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Priority Vulnerabilities -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">🎯 Top Priority Vulnerabilities</h5>
+                <small class="text-muted">
+                    Ranked by multi-factor risk score
+                </small>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Severity</th>
+                                <th>Title</th>
+                                <th>Tool</th>
+                                <th>Location</th>
+                                <th>Risk Score</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vuln in top_vulns %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <span class="badge
+                                        {% if vuln.severity == 'critical' %}bg-danger
+                                        {% elif vuln.severity == 'high' %}bg-warning text-dark
+                                        {% elif vuln.severity == 'medium' %}bg-info text-dark
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ vuln.severity|upper }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>{{ vuln.title|truncatechars:50 }}</strong>
+                                    {% if vuln.cwe_id %}
+                                        <br><small class="text-muted">
+                                            CWE-{{ vuln.cwe_id }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="badge bg-light text-dark">
+                                        {{ vuln.scan.tool_name }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if vuln.file_path %}
+                                            {{ vuln.file_path|truncatechars:30 }}
+                                            {% if vuln.line_number %}
+                                                :{{ vuln.line_number }}
+                                            {% endif %}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge
+                                        {% if vuln.calculated_risk_score >= 80 %}bg-danger
+                                        {% elif vuln.calculated_risk_score >= 60 %}bg-warning text-dark
+                                        {% elif vuln.calculated_risk_score >= 40 %}bg-info text-dark
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ vuln.calculated_risk_score|floatformat:1 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'vuln-detail' vuln.pk %}"
+                                        class="btn btn-sm btn-outline-primary">
+                                        Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No vulnerabilities found. Run security scans first.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Scans -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">🔍 Recent Security Scans</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tool</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Findings</th>
+                            <th>Branch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scan in recent_scans %}
+                        <tr>
+                            <td><strong>{{ scan.tool_name }}</strong></td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {{ scan.get_scan_type_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <small>
+                                    {{ scan.scan_date|date:"M d, Y H:i" }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">
+                                    {{ scan.vulnerabilities.count }}
+                                </span>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ scan.branch }}</small>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No scans found. Import scan reports first.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No Data State -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <h3>🔍 No Security Data Available</h3>
+                <p class="text-muted">
+                    Run security scans and import the reports to see data.
+                </p>
+                <div class="alert alert-info text-start d-inline-block">
+                    <strong>To import scan reports:</strong>
+                    <pre class="mb-0 mt-2">
+# Download artifacts from GitHub Actions
+# Place JSON files in scan_reports/ directory
+# Then run:
+python manage.py import_scans --scan-dir scan_reports</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Severity Distribution Chart
+    const severityCtx = document.getElementById('severityChart');
+    if (severityCtx) {
+        new Chart(severityCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [
+                        {{ severity_counts.critical }},
+                        {{ severity_counts.high }},
+                        {{ severity_counts.medium }},
+                        {{ severity_counts.low }}
+                    ],
+                    backgroundColor: [
+                        '#dc3545',
+                        '#fd7e14',
+                        '#ffc107',
+                        '#6c757d'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    // Tool Comparison Chart
+    const toolCtx = document.getElementById('toolChart');
+    if (toolCtx) {
+        const toolData = {{ tool_counts|safe }};
+        new Chart(toolCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(toolData),
+                datasets: [{
+                    label: 'Vulnerabilities Found',
+                    data: Object.values(toolData),
+                    backgroundColor: [
+                        '#0d6efd',
+                        '#6610f2',
+                        '#d63384',
+                        '#fd7e14',
+                        '#20c997'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // Trend Chart
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        const historicalData = {{ historical_scores|safe }};
+        if (historicalData.length > 0) {
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: historicalData.map(d => d.date),
+                    datasets: [{
+                        label: 'Security Score',
+                        data: historicalData.map(d => d.score),
+                        borderColor: '#0d6efd',
+                        tension: 0.1,
+                        fill: true,
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}
