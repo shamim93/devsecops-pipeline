@@ -33,6 +33,7 @@ class Command(BaseCommand):
             ('safety', 'safety-report.json', 'sca'),
             ('trivy', 'trivy-report.json', 'container'),
             ('zap', 'zap-full-report.json', 'dast'),
+            ('trufflehog', 'trufflehog-report.json', 'secret'),
         ]
         
         for tool_name, filename, scan_type in tools_config:

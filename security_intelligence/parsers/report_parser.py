@@ -331,7 +331,59 @@ class ZAPParser:
         }
         return risk_map.get(str(riskcode), 'medium')
 
-
+class TruffleHogParser:
+    """Parse TruffleHog secret scanning reports"""
+    
+    @staticmethod
+    def parse(report_data: Dict) -> List[Dict]:
+        """
+        Parse TruffleHog report
+        Handles both our custom format and native TruffleHog format
+        """
+        vulnerabilities = []
+        
+        # Handle our custom format
+        if 'vulnerabilities' in report_data:
+            for item in report_data.get('vulnerabilities', []):
+                vuln = {
+                    'tool_name': 'TruffleHog',
+                    'scan_type': 'secret',
+                    'vulnerability_id': item.get('vulnerability_id', ''),
+                    'title': item.get('title', ''),
+                    'description': item.get('description', ''),
+                    'severity': item.get('severity', 'high').lower(),
+                    'confidence': item.get('confidence', 'high').lower(),
+                    'file_path': item.get('file_path', ''),
+                    'line_number': item.get('line_number', 0),
+                    'code_snippet': item.get('code_snippet', ''),
+                    'cwe_id': item.get('cwe_id', '798'),
+                    'cvss_score': None,
+                    'references': item.get('references', []),
+                }
+                vulnerabilities.append(vuln)
+        
+        # Handle native TruffleHog format
+        elif 'SourceMetadata' in report_data:
+            vuln = {
+                'tool_name': 'TruffleHog',
+                'scan_type': 'secret',
+                'vulnerability_id': report_data.get('DetectorName', ''),
+                'title': f"Secret detected: {report_data.get('DetectorName', '')}",
+                'description': f"Raw: {report_data.get('Raw', '')}",
+                'severity': 'critical',
+                'confidence': 'high',
+                'file_path': report_data.get(
+                    'SourceMetadata', {}
+                ).get('Data', {}).get('Filesystem', {}).get('file', ''),
+                'line_number': 0,
+                'code_snippet': report_data.get('Raw', ''),
+                'cwe_id': '798',
+                'cvss_score': None,
+                'references': [],
+            }
+            vulnerabilities.append(vuln)
+        
+        return vulnerabilities
 class UnifiedParser:
     """Unified parser for all security tools"""
     
@@ -340,6 +392,7 @@ class UnifiedParser:
         'safety': SafetyParser,
         'trivy': TrivyParser,
         'zap': ZAPParser,
+        'trufflehog': TruffleHogParser, 
     }
     
     @staticmethod
@@ -360,3 +413,4 @@ class UnifiedParser:
             raise ValueError(f"Unknown tool: {tool_name}")
         
         return parser_class.parse(report_data)
+    

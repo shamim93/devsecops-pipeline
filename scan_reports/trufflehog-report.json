@@ -1,0 +1,66 @@
+{
+  "tool": "TruffleHog",
+  "scan_type": "secret",
+  "vulnerabilities": [
+    {
+      "vulnerability_id": "SECRET-001",
+      "title": "Hardcoded AWS Access Key",
+      "description": "AWS Access Key found hardcoded in source code",
+      "severity": "critical",
+      "confidence": "high",
+      "file_path": "tasks/vulnerabilities.py",
+      "line_number": 7,
+      "code_snippet": "AWS_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLE'",
+      "cwe_id": "798",
+      "references": ["https://cwe.mitre.org/data/definitions/798.html"]
+    },
+    {
+      "vulnerability_id": "SECRET-002",
+      "title": "Hardcoded AWS Secret Key",
+      "description": "AWS Secret Key found hardcoded in source code",
+      "severity": "critical",
+      "confidence": "high",
+      "file_path": "tasks/vulnerabilities.py",
+      "line_number": 8,
+      "code_snippet": "AWS_SECRET_KEY = 'wJalrXUtnFEMI/K7MDENG'",
+      "cwe_id": "798",
+      "references": ["https://cwe.mitre.org/data/definitions/798.html"]
+    },
+    {
+      "vulnerability_id": "SECRET-003",
+      "title": "Hardcoded Database Password",
+      "description": "Database password hardcoded in source code",
+      "severity": "high",
+      "confidence": "high",
+      "file_path": "tasks/vulnerabilities.py",
+      "line_number": 11,
+      "code_snippet": "DATABASE_PASSWORD = 'super_secret_password_123'",
+      "cwe_id": "259",
+      "references": ["https://cwe.mitre.org/data/definitions/259.html"]
+    },
+    {
+      "vulnerability_id": "SECRET-004",
+      "title": "Hardcoded Stripe API Key",
+      "description": "Stripe live API key hardcoded in source code",
+      "severity": "critical",
+      "confidence": "high",
+      "file_path": "tasks/vulnerabilities.py",
+      "line_number": 15,
+      "code_snippet": "STRIPE_API_KEY = 'sk_live_xxxx'",
+      "cwe_id": "798",
+      "references": ["https://cwe.mitre.org/data/definitions/798.html"]
+    },
+    {
+      "vulnerability_id": "SECRET-005",
+      "title": "Hardcoded Django Secret Key",
+      "description": "Django secret key hardcoded in source code",
+      "severity": "high",
+      "confidence": "high",
+      "file_path": "tasks/vulnerabilities.py",
+      "line_number": 20,
+      "code_snippet": "SECRET_KEY = 'django-insecure-hardcoded'",
+      "cwe_id": "259",
+      "references": ["https://cwe.mitre.org/data/definitions/259.html"]
+    }
+  ]
+}
