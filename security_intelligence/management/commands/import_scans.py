@@ -118,22 +118,31 @@ class Command(BaseCommand):
         
         # Calculate Security Health Score
         self.stdout.write("\nCalculating Security Health Score...")
-        
+        # Get vulnerabilities per tool
+        bandit_vulns = vulnerabilities_by_tool.get('bandit', [])
+        safety_vulns = vulnerabilities_by_tool.get('safety', [])
+        pip_audit_vulns = vulnerabilities_by_tool.get('pip-audit', [])
+        zap_vulns = vulnerabilities_by_tool.get('zap', [])
+        trivy_vulns = vulnerabilities_by_tool.get('trivy', [])
+        trufflehog_vulns = vulnerabilities_by_tool.get('trufflehog', [])
+        sca_vulns = safety_vulns + pip_audit_vulns
         component_scores = {
-            'code_security': SecurityHealthScoreCalculator.calculate_component_score(
-                vulnerabilities_by_tool.get('bandit', [])
-            ),
-            'dependency_health': SecurityHealthScoreCalculator.calculate_component_score(
-                vulnerabilities_by_tool.get('safety', [])
-            ),
-            'runtime_security': SecurityHealthScoreCalculator.calculate_component_score(
-                vulnerabilities_by_tool.get('zap', [])
-            ),
-            'secret_exposure': 50.0,  # Placeholder - TruffleHog results need parsing
-            'container_security': SecurityHealthScoreCalculator.calculate_component_score(
-                vulnerabilities_by_tool.get('trivy', [])
-            ),
-        }
+                'code_security': SecurityHealthScoreCalculator.calculate_component_score(
+                    bandit_vulns
+                ),
+                'dependency_health': SecurityHealthScoreCalculator.calculate_component_score(
+                    sca_vulns
+                ),
+                'runtime_security': SecurityHealthScoreCalculator.calculate_component_score(
+                    zap_vulns
+                ),
+                'secret_exposure': SecurityHealthScoreCalculator.calculate_component_score(
+                    trufflehog_vulns
+                ) if trufflehog_vulns else 50.0,
+                'container_security': SecurityHealthScoreCalculator.calculate_component_score(
+                    trivy_vulns
+                ),
+            }
         
         overall_score, grade = SecurityHealthScoreCalculator.calculate_overall_score(component_scores)
         

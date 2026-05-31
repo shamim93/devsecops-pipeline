@@ -1,14 +1,94 @@
 {
   "results": [
     {
+      "test_id": "B105",
+      "issue_text": "Possible hardcoded password: 'django-insecure'",
+      "issue_severity": "LOW",
+      "issue_confidence": "MEDIUM",
+      "filename": "securetask/settings.py",
+      "line_number": 12,
+      "code": "SECRET_KEY = 'django-insecure-9s#=j=ul'",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b105_hardcoded_password_string.html"
+    },
+    {
+      "test_id": "B104",
+      "issue_text": "Possible binding to all interfaces.",
+      "issue_severity": "MEDIUM",
+      "issue_confidence": "MEDIUM",
+      "filename": "securetask/settings.py",
+      "line_number": 17,
+      "code": "ALLOWED_HOSTS = ['localhost', '0.0.0.0', '*']",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b104_hardcoded_bind_all_interfaces.html"
+    },
+    {
+      "test_id": "B106",
+      "issue_text": "Possible hardcoded password: 'testpass123'",
+      "issue_severity": "LOW",
+      "issue_confidence": "MEDIUM",
+      "filename": "tasks/tests.py",
+      "line_number": 8,
+      "code": "password='testpass123'",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b106_hardcoded_password_funcarg.html"
+    },
+    {
+      "test_id": "B106",
+      "issue_text": "Possible hardcoded password: 'testpass123'",
+      "issue_severity": "LOW",
+      "issue_confidence": "MEDIUM",
+      "filename": "tasks/tests.py",
+      "line_number": 37,
+      "code": "password='testpass123'",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b106_hardcoded_password_funcarg.html"
+    },
+    {
+      "test_id": "B105",
+      "issue_text": "Possible hardcoded password: 'wJalrXUtnFEMI'",
+      "issue_severity": "LOW",
+      "issue_confidence": "MEDIUM",
+      "filename": "tasks/vulnerabilities.py",
+      "line_number": 8,
+      "code": "AWS_SECRET_KEY = 'wJalrXUtnFEMI/K7MDENG'",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b105_hardcoded_password_string.html"
+    },
+    {
+      "test_id": "B105",
+      "issue_text": "Possible hardcoded password: 'super_secret_password_123'",
+      "issue_severity": "LOW",
+      "issue_confidence": "MEDIUM",
+      "filename": "tasks/vulnerabilities.py",
+      "line_number": 11,
+      "code": "DATABASE_PASSWORD = 'super_secret_password_123'",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b105_hardcoded_password_string.html"
+    },
+    {
+      "test_id": "B105",
+      "issue_text": "Possible hardcoded password: 'django-insecure-hardcoded'",
+      "issue_severity": "LOW",
+      "issue_confidence": "MEDIUM",
+      "filename": "tasks/vulnerabilities.py",
+      "line_number": 20,
+      "code": "SECRET_KEY = 'django-insecure-hardcoded-secret-key-12345'",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b105_hardcoded_password_string.html"
+    },
+    {
       "test_id": "B608",
-      "issue_text": "Possible SQL injection",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
       "issue_severity": "MEDIUM",
       "issue_confidence": "LOW",
       "filename": "tasks/web_views.py",
       "line_number": 84,
       "code": "sql = f\"SELECT * FROM tasks_task WHERE title LIKE '%{query}%'\"",
       "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b608_hardcoded_sql_expressions.html"
+    },
+    {
+      "test_id": "B105",
+      "issue_text": "Possible hardcoded password: '***'",
+      "issue_severity": "LOW",
+      "issue_confidence": "MEDIUM",
+      "filename": "tasks/vulnerabilities.py",
+      "line_number": 16,
+      "code": "GITHUB_TOKEN = '***'",
+      "more_info": "https://bandit.readthedocs.io/en/latest/plugins/b105_hardcoded_password_string.html"
     }
   ]
 }
