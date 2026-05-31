@@ -30,6 +30,7 @@ class Command(BaseCommand):
         tools_config = [
             ('bandit', 'bandit-report.json', 'sast'),
             ('safety', 'safety-report.json', 'sca'),
+            ('pip-audit', 'pip-audit-report.json', 'sca'),
             ('trivy', 'trivy-report.json', 'container'),
             ('zap', 'zap-full-report.json', 'dast'),
             ('trufflehog', 'trufflehog-report.json', 'secret'),

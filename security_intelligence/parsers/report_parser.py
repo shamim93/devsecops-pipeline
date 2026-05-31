@@ -132,16 +132,21 @@ class SafetyParser:
         if not isinstance(report_data, dict):
             return vulnerabilities
 
+        # Handle raw_output format - parse the text
         if 'raw_output' in report_data:
-            return SafetyParser._parse_text_output(
-                report_data['raw_output']
-            )
+            raw = report_data.get('raw_output', '')
+            if raw:
+                parsed = SafetyParser._parse_text_output(raw)
+                if parsed:
+                    return parsed
 
         if 'scan_results' in report_data:
             return SafetyParser._parse_new_format(report_data)
 
         if 'vulnerabilities' in report_data:
-            return SafetyParser._parse_old_format(report_data)
+            vulns = report_data.get('vulnerabilities', [])
+            if vulns:  # Only if not empty
+                return SafetyParser._parse_old_format(report_data)
 
         if isinstance(report_data, list):
             return SafetyParser._parse_array_format(report_data)
@@ -383,40 +388,46 @@ class ZAPParser:
         if not site:
             return vulnerabilities
 
-        alerts = site[0].get('alerts', [])
+        # Check ALL sites (http and https)
+        for site_entry in site:
+            alerts = site_entry.get('alerts', [])
 
-        for alert in alerts:
-            plugin_id = str(alert.get('pluginid', ''))
-            instances = alert.get('instances', [])
+            for alert in alerts:
+                plugin_id = str(alert.get('pluginid', ''))
+                instances = alert.get('instances', [])
 
-            cwe_id = ZAPParser.PLUGIN_TO_CWE.get(
-                plugin_id,
-                str(alert.get('cweid', ''))
-            )
+                cwe_id = ZAPParser.PLUGIN_TO_CWE.get(
+                    plugin_id,
+                    str(alert.get('cweid', ''))
+                )
 
-            for instance in instances:
-                vuln = {
-                    'tool_name': 'OWASP ZAP',
-                    'scan_type': 'dast',
-                    'vulnerability_id': plugin_id,
-                    'title': alert.get('name', ''),
-                    'description': alert.get('desc', ''),
-                    'severity': ZAPParser._map_risk(
-                        alert.get('riskcode', '1')
-                    ),
-                    'confidence': alert.get(
-                        'confidence', 'Medium'
-                    ).lower(),
-                    'file_path': instance.get('uri', ''),
-                    'line_number': 0,
-                    'code_snippet': instance.get('evidence', ''),
-                    'cwe_id': cwe_id,
-                    'references': (
-                        alert.get('reference', '').split('\n')
-                        if alert.get('reference') else []
-                    ),
-                }
-                vulnerabilities.append(vuln)
+                # If no instances, create one entry
+                if not instances:
+                    instances = [{'uri': site_entry.get('@name', ''), 'evidence': ''}]
+
+                for instance in instances:
+                    vuln = {
+                        'tool_name': 'OWASP ZAP',
+                        'scan_type': 'dast',
+                        'vulnerability_id': plugin_id,
+                        'title': alert.get('name', ''),
+                        'description': alert.get('desc', ''),
+                        'severity': ZAPParser._map_risk(
+                            alert.get('riskcode', '1')
+                        ),
+                        'confidence': alert.get(
+                            'confidence', 'Medium'
+                        ).lower(),
+                        'file_path': instance.get('uri', ''),
+                        'line_number': 0,
+                        'code_snippet': instance.get('evidence', ''),
+                        'cwe_id': cwe_id,
+                        'references': (
+                            alert.get('reference', '').split('\n')
+                            if alert.get('reference') else []
+                        ),
+                    }
+                    vulnerabilities.append(vuln)
 
         return vulnerabilities
 
@@ -490,13 +501,63 @@ class TruffleHogParser:
 
         return vulnerabilities
 
+class PipAuditParser:
+    """Parse pip-audit dependency scan reports"""
 
+    @staticmethod
+    def parse(report_data: Dict) -> List[Dict]:
+        vulnerabilities = []
+
+        # pip-audit JSON format:
+        # {"dependencies": [{"name": "pkg", "version": "x.y.z",
+        #   "vulns": [{"id": "GHSA-xxx", "description": "...",
+        #   "fix_versions": ["x.y.z"]}]}]}
+
+        dependencies = report_data.get('dependencies', [])
+
+        for dep in dependencies:
+            pkg_name = dep.get('name', '')
+            pkg_version = dep.get('version', '')
+            vulns = dep.get('vulns', [])
+
+            for vuln in vulns:
+                vuln_id = vuln.get('id', '')
+
+                # Determine severity from ID
+                if vuln_id.startswith('CVE'):
+                    severity = 'medium'
+                elif vuln_id.startswith('GHSA'):
+                    severity = 'medium'
+                else:
+                    severity = 'medium'
+
+                vulnerability = {
+                    'tool_name': 'Safety',
+                    'scan_type': 'sca',
+                    'vulnerability_id': vuln_id,
+                    'title': f"Vulnerable: {pkg_name}=={pkg_version}",
+                    'description': vuln.get('description', ''),
+                    'severity': severity,
+                    'confidence': 'high',
+                    'file_path': 'requirements.txt',
+                    'line_number': 0,
+                    'code_snippet': f"{pkg_name}=={pkg_version}",
+                    'cwe_id': '',
+                    'cvss_score': 0,
+                    'references': (
+                        [f"https://osv.dev/vulnerability/{vuln_id}"]
+                    ),
+                }
+                vulnerabilities.append(vulnerability)
+
+        return vulnerabilities
 class UnifiedParser:
     """Unified parser for all security tools"""
 
     PARSERS = {
         'bandit': BanditParser,
         'safety': SafetyParser,
+        'pip-audit': PipAuditParser,
         'trivy': TrivyParser,
         'zap': ZAPParser,
         'trufflehog': TruffleHogParser,
