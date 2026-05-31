@@ -11,7 +11,6 @@ from security_intelligence.analyzers.health_score import SecurityHealthScoreCalc
 from security_intelligence.correlators.vulnerability_correlator import VulnerabilityCorrelator
 from security_intelligence.analyzers.prioritization import VulnerabilityPrioritizer
 
-
 class Command(BaseCommand):
     help = 'Import security scan reports and calculate scores'
     
@@ -72,6 +71,14 @@ class Command(BaseCommand):
                 # Save to database
                 for vuln_data in vulns:
                     try:
+                        priority_info = VulnerabilityPrioritizer.calculate_priority_score({
+                            'severity': vuln_data.get('severity', 'medium'),
+                            'confidence': vuln_data.get('confidence', 'medium'),
+                            'cwe_id': str(vuln_data.get('cwe_id', '')),
+                            'first_detected': None,
+                            'correlation_count': 0,
+                        })
+                        risk_score = priority_info['priority_score']
                         
                         Vulnerability.objects.create(
                             scan=scan,
@@ -86,13 +93,14 @@ class Command(BaseCommand):
                             cwe_id=str(vuln_data.get('cwe_id', ''))[:20],
                             cvss_score=vuln_data.get('cvss_score'),
                             references=vuln_data.get('references', []),
+                            calculated_risk_score=risk_score,
                         )
                         
                     except Exception as e:
                         self.stdout.write(self.style.WARNING(f"Error saving vulnerability: {e}"))
                         continue
                 self.stdout.write(self.style.SUCCESS(
-                f"✅ Imported {len(vulns)} vulnerabilities from {tool_name}"
+                f" Imported {len(vulns)} vulnerabilities from {tool_name}"
             ))
                     
             except Exception as e:

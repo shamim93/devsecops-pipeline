@@ -287,15 +287,19 @@
                                         {% endif %}
                                     </small>
                                 </td>
-                                <td>
-                                    <span class="badge
-                                        {% if vuln.calculated_risk_score >= 80 %}bg-danger
-                                        {% elif vuln.calculated_risk_score >= 60 %}bg-warning text-dark
-                                        {% elif vuln.calculated_risk_score >= 40 %}bg-info text-dark
-                                        {% else %}bg-secondary{% endif %}">
-                                        {{ vuln.calculated_risk_score|floatformat:1 }}
-                                    </span>
-                                </td>
+                               <td>
+    <span class="badge
+        {% if vuln.severity == 'critical' %}bg-danger
+        {% elif vuln.severity == 'high' %}bg-warning text-dark
+        {% elif vuln.severity == 'medium' %}bg-info text-dark
+        {% else %}bg-secondary{% endif %}">
+        {% if vuln.calculated_risk_score > 0 %}
+            {{ vuln.calculated_risk_score|floatformat:1 }}
+        {% else %}
+            {{ vuln.severity|upper }}
+        {% endif %}
+    </span>
+</td>
                                 <td>
                                     <a href="{% url 'vuln-detail' vuln.pk %}"
                                         class="btn btn-sm btn-outline-primary">
