@@ -160,6 +160,57 @@ class Command(BaseCommand):
             medium_count=severity_counts['medium'],
             low_count=severity_counts['low'],
         )
+        # Step 3: Run correlation engine
+        self.stdout.write("\nRunning correlation engine...")
+
+        # Get all vulnerabilities as dicts
+        all_vuln_dicts = list(Vulnerability.objects.filter(
+            scan__in=SecurityScan.objects.filter(
+                commit_sha=commit_sha
+            )
+        ).values(
+            'id', 'title', 'severity', 'confidence',
+            'file_path', 'line_number', 'cwe_id',
+            'description', 'scan__tool_name'
+        ))
+        # tool name
+        for v in all_vuln_dicts:
+            v['tool_name'] = v.pop('scan__tool_name')
+
+        # Find correlations
+        correlations = VulnerabilityCorrelator.find_correlations(all_vuln_dicts)
+
+        # Build correlation count map
+        correlation_counts = {}
+        for group in correlations:
+            primary_id = group['primary']['id']
+            count = len(group['correlated'])
+            correlation_counts[primary_id] = count
+            for corr in group['correlated']:
+                corr_id = corr['vulnerability']['id']
+                correlation_counts[corr_id] = count
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Found {len(correlations)} correlation groups"
+            )
+        )
+
+        # Step 4: Update risk scores with correlation counts
+        self.stdout.write("\nUpdating risk scores with correlation data...")
+        for vuln in Vulnerability.objects.filter(
+            scan__commit_sha=commit_sha
+        ):
+            corr_count = correlation_counts.get(vuln.id, 0)
+            priority_info = VulnerabilityPrioritizer.calculate_priority_score({
+                'severity': vuln.severity,
+                'confidence': vuln.confidence,
+                'cwe_id': vuln.cwe_id,
+                'first_detected': vuln.first_detected,
+                'correlation_count': corr_count,
+            })
+            vuln.calculated_risk_score = priority_info['priority_score']
+            vuln.save()
         
         self.stdout.write(self.style.SUCCESS(f"\n{'='*60}"))
         self.stdout.write(self.style.SUCCESS(f"Security Health Score: {overall_score:.1f} ({grade})"))
