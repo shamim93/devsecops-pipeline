@@ -1,4 +1,3 @@
----
 name: CI/CD Pipeline with Security Scanning and Gates
 
 on:
@@ -6,58 +5,69 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+
 env:
   BANDIT_SEVERITY_THRESHOLD: MEDIUM
-  SAFETY_SEVERITY_THRESHOLD: MEDIUM
   TRIVY_SEVERITY: HIGH,CRITICAL
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run Django Tests
         env:
           USE_SQLITE: 'True'
         run: |
           python manage.py migrate
           python manage.py test
+
       - name: Check Django deployment readiness
         env:
           USE_SQLITE: 'True'
         run: python manage.py check --deploy || true
+
   sast-scan:
     runs-on: ubuntu-latest
     needs: build-and-test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+
       - name: Install Bandit
         run: pip install bandit
+
       - name: Run Bandit Security Scan
         run: |
           bandit -r tasks/ securetask/ -f json -o bandit-report.json -ll || true
           bandit -r tasks/ securetask/ -ll
         continue-on-error: false
+
       - name: Upload Bandit Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bandit-security-report
           path: bandit-report.json
-dependency-scan:
+
+  dependency-scan:
     runs-on: ubuntu-latest
     needs: build-and-test
     steps:
@@ -69,7 +79,7 @@ dependency-scan:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Install dependencies and pip-audit
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
@@ -87,42 +97,7 @@ dependency-scan:
         with:
           name: safety-dependency-report
           path: pip-audit-report.json
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      - name: Install dependencies and Safety
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install safety
-      - name: Run Safety Scan
-        run: safety scan --output json > safety-report.json 2>&1 || true
-        continue-on-error: true
-      - name: Validate and Display Safety Report
-        run: |
-          if python3 -c "import json; json.load(open('safety-report.json'))" 2>/dev/null; then
-            echo "Valid JSON report generated"
-            cat safety-report.json
-          else
-            echo "Creating fallback report"
-            safety scan > safety-output.txt 2>&1 || true
-            python3 scripts/fix_safety_report.py
-            cat safety-report.json
-          fi
-          safety scan || true
-        continue-on-error: true
-      - name: Upload Safety Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: safety-dependency-report
-          path: safety-report.json
+
   secret-scan:
     runs-on: ubuntu-latest
     needs: build-and-test
@@ -131,6 +106,7 @@ dependency-scan:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: TruffleHog Secret Scan
         uses: trufflesecurity/trufflehog@main
         with:
@@ -139,18 +115,22 @@ dependency-scan:
           head: HEAD
           extra_args: --only-verified
         continue-on-error: true
+
   docker-security:
     runs-on: ubuntu-latest
     needs: build-and-test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Build Docker Image
         run: |
           docker build -t securetask:${{ github.sha }} .
           docker tag securetask:${{ github.sha }} securetask:latest
+
       - name: Install Trivy
         run: |
           sudo apt-get install wget apt-transport-https gnupg lsb-release -y
@@ -161,6 +141,7 @@ dependency-scan:
             | sudo tee -a /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
           sudo apt-get install trivy -y
+
       - name: Run Trivy Scan
         run: |
           trivy image \
@@ -171,14 +152,15 @@ dependency-scan:
             --severity ${{ env.TRIVY_SEVERITY }} \
             --exit-code 1 \
             securetask:latest
-          trivy image securetask:latest
         continue-on-error: false
+
       - name: Upload Trivy Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-container-report
           path: trivy-report.json
+
   security-gate-check:
     runs-on: ubuntu-latest
     needs: [sast-scan, dependency-scan, secret-scan, docker-security]
@@ -190,18 +172,21 @@ dependency-scan:
           echo "Security Gate Status Summary"
           echo "========================================="
           echo "SAST (Bandit):        ${{ needs.sast-scan.result }}"
-          echo "SCA (Safety):         ${{ needs.dependency-scan.result }}"
+          echo "SCA (pip-audit):      ${{ needs.dependency-scan.result }}"
           echo "Secrets (TruffleHog): ${{ needs.secret-scan.result }}"
           echo "Container (Trivy):    ${{ needs.docker-security.result }}"
           echo "========================================="
+
           SAST="${{ needs.sast-scan.result }}"
           TRIVY="${{ needs.docker-security.result }}"
+
           if [[ "$SAST" == "failure" ]] || [[ "$TRIVY" == "failure" ]]; then
             echo "DEPLOYMENT BLOCKED: Security gates failed!"
             exit 1
           else
             echo "Security gates passed!"
           fi
+
   deploy:
     runs-on: ubuntu-latest
     needs: security-gate-check
@@ -209,6 +194,7 @@ dependency-scan:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Simulate Deployment
         run: |
           echo "========================================="
@@ -217,6 +203,7 @@ dependency-scan:
           echo "All security checks passed!"
           echo "Deploying version: ${{ github.sha }}"
           echo "Deployment successful!"
+
   generate-security-report:
     runs-on: ubuntu-latest
     needs: [sast-scan, dependency-scan, docker-security]
@@ -224,6 +211,7 @@ dependency-scan:
     steps:
       - name: Download all reports
         uses: actions/download-artifact@v4
+
       - name: Generate Security Summary
         run: |
           echo "# Security Scan Summary" > security-summary.md
@@ -233,9 +221,10 @@ dependency-scan:
           echo "| Tool | Status |" >> security-summary.md
           echo "|------|--------|" >> security-summary.md
           echo "| Bandit (SAST) | ${{ needs.sast-scan.result }} |" >> security-summary.md
-          echo "| Safety (SCA) | ${{ needs.dependency-scan.result }} |" >> security-summary.md
-          echo "| Trivy | ${{ needs.docker-security.result }} |" >> security-summary.md
+          echo "| pip-audit (SCA) | ${{ needs.dependency-scan.result }} |" >> security-summary.md
+          echo "| Trivy (Container) | ${{ needs.docker-security.result }} |" >> security-summary.md
           cat security-summary.md
+
       - name: Upload Security Summary
         uses: actions/upload-artifact@v4
         with:
